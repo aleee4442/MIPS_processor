@@ -15,8 +15,7 @@ class RAM:
 
     def __init__(self):
         """ Inicializa algo, si hiciera falta """
-        # TODO: Rellenad la funcion
-        pass
+        self.memory = {}
 
     def set(self, addr: str, value: str):
         """ Escribe el valor <value> en la direccion <addr>, si esta es valida (tiene 32 bits)
@@ -25,21 +24,23 @@ class RAM:
             Tanto addr como value son representaciones en binario de 32 bits, por ejemplo:
                 value = "00....0010" representa el 2 en binario.     
         """
-        # TODO: Rellenad la funcion
-        pass
+        if not isinstance(addr, str) or len(addr) != 32 or not set(addr).issubset({"0", "1"}):
+            raise IndexError("Dirección no válida. Debe ser una cadena binaria de 32 bits.")
+        return int(addr, 2)
 
     def get(self, addr: str):
         """ Devuelve el valor actual de la dirección <addr> si esta es valida (tiene 32 bits).
             Lanza una excepción IndexError (raise IndexError...) si no es válida. Cuando se intente acceder a una 
             dirección válida que no haya sido escrita con anterioridad, el resultado a de ser 0 
         """
-        # TODO: Rellenad la funcion
-        pass        
+        if not isinstance(addr, str) or len(addr) != 32 or not set(addr).issubset({"0", "1"}):
+            raise IndexError("Dirección no válida. Debe ser una cadena binaria de 32 bits.")
+        dir_int = int(addr, 2)
+        return self.memory.get(dir_int, "0" * 32)
 
     def reset(self):
         """ Limpia el estado de la memoria """
-        # TODO: Rellenad la funcion
-        pass
+        self.memory.clear()
 
     def dump_instr(self, filename: str):
         """ Realiza un volcado de memoria al fichero <filename> del segmento de instrucciones
@@ -50,8 +51,10 @@ class RAM:
         
         Donde addr está en hexadecimal (es decir, de la forma 0x12345678) 
         y value será una cadena de 32 bits"""
-        # TODO: Rellenad la funcion
-        pass
+        with open(filename, "w") as f:
+            for addr in sorted(self.memory.keys()):
+                if addr < 1000:
+                    f.write(f"{hex(addr)} {self.memory[addr]}\n")
 
 
     def dump_data(self, filename: str):
@@ -63,7 +66,9 @@ class RAM:
         
         Donde addr está en hexadecimal (es decir, de la forma 0x12345678) 
         y value puede ser un número cualquiera"""
-        # TODO: Rellenad la funcion
-        pass
+        with open(filename, "w") as f:
+            for addr in sorted(self.memory.keys()):
+                if addr >= 1000:
+                    f.write(f"{hex(addr)} {self.memory[addr]}\n")
 
 

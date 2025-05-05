@@ -6,8 +6,9 @@ class CPU:
     def __init__(self):
         """ Inicializa algo, si hiciera falta """
         # TODO: Rellenad el método
-        memory = RAM()
-        regs = Regs()
+        self.PC = 0
+        self.memory = RAM()  # Asigna la memoria como atributo de la clase
+        self.regs = Regs()
         # Líneas de control
         self.lineas_control = {
             "reg_dst": None,
@@ -21,7 +22,14 @@ class CPU:
         }
     
     def unidad_control(self, opcode: str, func: str):
+        print(f"Unidad de control recibida: opcode = {opcode}, func = {func}")  # Imprime opcode y func
+        print(f"Ejecutando unidad_control con opcode: {opcode}, func: {func}")
         if opcode == "000000":  # Tipo R
+            # Si el func es "000000", es un NOP (No Operación)
+            if func == "000000":
+                print("NOP detected, no operation performed.")
+                return  # No hacer nada, simplemente salimos
+            
             # Traducimos func a operación ALU
             if func == "100000":  # ADD
                 alu_op = "add"
@@ -83,18 +91,22 @@ class CPU:
             raise Exception(f"Opcode no soportado: {opcode}")
         
     def ALU(self, value1: str, value2: str):
-        op = self.lineas_control["alu_op"]
+        # Convertir las cadenas binarias a enteros
+        value1_int = int(value1, 2)
+        value2_int = int(value2, 2)
 
+        op = self.lineas_control["alu_op"]
+        
         if op == "add":
-            return value1 + value2
+            return format(value1_int + value2_int, '032b')
         elif op == "sub":
-            return value1 - value2
+            return format(value1_int - value2_int, '032b')
         elif op == "and":
-            return value1 & value2
+            return format(value1_int & value2_int, '032b')
         elif op == "or":
-            return value1 | value2
+            return format(value1_int | value2_int, '032b')
         elif op == "slt":
-            return 1 if value1 < value2 else 0
+            return format(1 if value1_int < value2_int else 0, '032b')
         else:
             raise Exception(f"Operación ALU no soportada: {op}")
 
@@ -104,45 +116,31 @@ class CPU:
             líneas de control a None) y guarda las instrucciones del nuevo programa 
             en las primeras direcciones de la memoria 
         """
-        self.memory = RAM()  # Nueva instancia para resetear memoria
-        self.regs = Regs()   # Nueva instancia para resetear registros
-        self.PC = 0          # Resetear el contador de programa
-
-        # Resetear las líneas de control
-        for value in self.lineas_control:
-            self.lineas_control[value] = None
-
-        # Cargar instrucciones en memoria (una por línea)
-        for i, instr in enumerate(instructions):
-            self.memory.store_word(i * 4, instr)  # MIPS usa direcciones múltiplos de 4
-
-    def run_instrucion(self):
-        """ Ejecuta la instrucción que indica el PC en cada momento.
-            Esta función ha de ser capaz de:
-             - Acceder a memoria y obtener la instrucción que toca (recibirá una cadena de bits)
-             - Identificar el tipo de instrucción
-             - Decodificar la instrucción usando el formato adecuado
-             - Ejecutar correctamenente la instrucción, leyendo o escribiendo en memoria o registros
-               si hiciera falta """
-        # 1. Fetch: obtener la instrucción desde memoria usando el PC
-        instr = self.memory.load_word(self.PC)
+       # 1. Fetch: obtener la instrucción desde memoria usando el PC
+        addr_bin = format(self.PC, '032b')
+        instr = self.memory.get(addr_bin)
         
+        print(f"Instr: {instr}")  # Imprime la instrucción cargada
+
         # 2. Decode: extraer campos comunes (para tipo R, I, etc.)
         opcode = instr[0:6]
+        funct = instr[26:32]  # Obtenemos 'func'
+
+        print(f"Func: {funct}")  # Imprime el valor de funct antes de llamar a unidad_control
 
         if opcode == "000000":  # Tipo R
-            rs = int(instr[6:11], 2)
-            rt = int(instr[11:16], 2)
+            rs = instr[6:11]  # Esto será una cadena de 5 bits
+            rt = instr[11:16]  # Esto será una cadena de 5 bits
             rd = int(instr[16:21], 2)
-            shamt = int(instr[21:26], 2)  # no lo usamos aún
+            shamt = int(instr[21:26], 2)  # No lo usamos aún
             funct = instr[26:32]
 
             # 3. Unidad de control
-            self.unidad_control(opcode, funct)
-
+            self.unidad_control(opcode, funct)  # Aquí se lanza la excepción si no es válido
+            print(f"rs: {rs}, rt: {rt}")  # Verifica que rs y rt sean cadenas de 5 bits
             # 4. Leer registros
-            value1 = self.regs.read(rs)
-            value2 = self.regs.read(rt)
+            value1 = self.regs.get(rs)
+            value2 = self.regs.get(rt)
 
             # 5. ALU
             result = self.ALU(value1, value2)
@@ -152,44 +150,14 @@ class CPU:
                 dest = rd if self.lineas_control["reg_dst"] else rt
                 self.regs.write(dest, result)
 
-        else:  # Tipo I (LW, SW, BEQ)
-            rs = int(instr[6:11], 2)
-            rt = int(instr[11:16], 2)
-            imm = int(instr[16:32], 2)
-            if imm >= 2**15:  # Sign-extend
-                imm -= 2**16
-
-            self.unidad_control(opcode, "xxxxxx")  # func no se usa
-
-            value1 = self.regs.read(rs)
-            value2 = self.regs.read(rt)
-
-            if opcode == "100011":  # LW
-                addr = self.ALU(value1, imm)
-                word = self.memory.load_word(addr)
-                if self.lineas_control["reg_write"]:
-                    self.regs.write(rt, word)
-
-            elif opcode == "101011":  # SW
-                addr = self.ALU(value1, imm)
-                self.memory.store_word(addr, value2)
-
-            elif opcode == "000100":  # BEQ
-                alu_result = self.ALU(value1, value2)
-                if alu_result == 0:  # Son iguales
-                    self.PC += 4 + (imm << 2)  # Branch tomado
-                    return  # ¡Importante! ya actualizamos PC, salimos
-            
-        # 7. Avanzar PC por defecto
-        self.PC += 4
-
 
     def run(self):
         """ Ejecuta el programa cargado desde el punto de ejecución actual, 
             indicado por el PC, hasta el final """
         try:
             while True:
-                instr = self.memory.load_word(self.PC)
+                addr_bin = format(self.PC, '032b')
+                instr = self.memory.get(addr_bin)
                 if instr is None or len(instr) != 32:  # Por si llegamos al final o algo raro
                     break
                 self.run_instrucion()

@@ -1,6 +1,8 @@
 # Ejemplo de uso
 from CPU import CPU
 
+print("Iniciando simulación...")
+
 cpu = CPU()
 
 # Lectura de instrucciones
