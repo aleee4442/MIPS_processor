@@ -15,7 +15,7 @@ class Regs:
     def __init__(self):
         """ Inicializa algo, si hiciese falta """
         # TODO: Rellenad la funcion
-        self.PC = None
+        self.PC = "0" * 32 
         self.registers = {
             # TODO: añadir los registros necesarios
             # Se propone usar un diccionario pero podéis
@@ -61,6 +61,11 @@ class Regs:
         reg_name = self.index_map[reg_idx]
         if reg_name == "zero":
             return  # zero es inmutable
+        if reg_idx == "PC":
+            if len(value) != 32 or not set(value).issubset({"0", "1"}):
+                raise ValueError("El valor debe ser una cadena binaria de 32 bits.")
+            self.PC = value
+            return
         self.registers[reg_name] = value
 
     def get(self, reg_idx: str):
@@ -97,9 +102,8 @@ class Regs:
           
         Donde value es un número cualquiera """
         with open(filename, "w") as f:
-            f.write(f"PC {int(self.PC, 2)}\n")
-            f.write(f"zero {int(self.registers['zero'], 2)}\n")
-            for i in range(8):
-                f.write(f"t{i} {int(self.registers[f't{i}'], 2)}\n")
-            for i in range(8):
-                f.write(f"s{i} {int(self.registers[f's{i}'], 2)}\n")
+            f.write(f"PC {self.PC}\n")
+            for reg in ["zero"] + [f"t{i}" for i in range(8)] + [f"s{i}" for i in range(8)]:
+                val = self.registers[reg]
+                f.write(f"{reg} {val}\n")
+

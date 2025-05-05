@@ -136,8 +136,13 @@ class CPU:
             funct = instr[26:32]
 
             # 3. Unidad de control
-            self.unidad_control(opcode, funct)  # Aquí se lanza la excepción si no es válido
-            print(f"rs: {rs}, rt: {rt}")  # Verifica que rs y rt sean cadenas de 5 bits
+            self.unidad_control(opcode, funct)
+
+            # Si es NOP, salimos directamente
+            if opcode == "000000" and funct == "000000":
+                return
+
+            print(f"rs: {rs}, rt: {rt}")
             # 4. Leer registros
             value1 = self.regs.get(rs)
             value2 = self.regs.get(rt)
@@ -150,6 +155,77 @@ class CPU:
                 dest = rd if self.lineas_control["reg_dst"] else rt
                 self.regs.write(dest, result)
 
+
+    def run_instrucion(self):
+        """ Ejecuta la instrucción que indica el PC en ese momento. """
+        addr_bin = format(self.PC, '032b')
+        instr = self.memory.get(addr_bin)
+
+        if instr is None or len(instr) != 32:
+            raise Exception("Instrucción inválida o fin del programa.")
+
+        print(f"Instr: {instr}")
+
+        opcode = instr[0:6]
+        funct = instr[26:32]
+
+        print(f"Func: {funct}")
+        self.unidad_control(opcode, funct)
+
+        if opcode == "000000" and funct == "000000":
+            print("NOP: Avanzando PC.")
+            self.PC += 1
+            return
+
+        if opcode == "000000":  # Tipo R
+            rs = instr[6:11]
+            rt = instr[11:16]
+            rd = int(instr[16:21], 2)
+
+            print(f"rs: {rs}, rt: {rt}, rd: {rd}")
+
+            value1 = self.regs.get(rs)
+            value2 = self.regs.get(rt)
+
+            result = self.ALU(value1, value2)
+
+            if self.lineas_control["reg_write"]:
+                dest = rd if self.lineas_control["reg_dst"] else rt
+                self.regs.write(dest, result)
+
+        elif opcode in ["100011", "101011"]:  # LW o SW (tipo I)
+            rs = instr[6:11]
+            rt = instr[11:16]
+            offset = int(instr[16:32], 2)
+
+            base_addr = int(self.regs.get(rs), 2)
+            mem_addr = base_addr + offset
+            mem_addr_bin = format(mem_addr, '032b')
+
+            if self.lineas_control["mem_read"]:  # LW
+                value = self.memory.get(mem_addr_bin)
+                if self.lineas_control["reg_write"]:
+                    self.regs.write(int(rt, 2), value)
+
+            elif self.lineas_control["mem_write"]:  # SW
+                value = self.regs.get(rt)
+                self.memory.set(mem_addr_bin, value)
+
+        elif opcode == "000100":  # BEQ
+            rs = instr[6:11]
+            rt = instr[11:16]
+            offset = int(instr[16:32], 2)
+
+            value1 = self.regs.get(rs)
+            value2 = self.regs.get(rt)
+            result = self.ALU(value1, value2)
+
+            if result == format(0, '032b'):  # son iguales
+                self.PC += offset
+                return  # Ya hemos actualizado PC
+
+        # Avanza PC si no ha saltado
+        self.PC += 1
 
     def run(self):
         """ Ejecuta el programa cargado desde el punto de ejecución actual, 
@@ -167,7 +243,12 @@ class CPU:
     def dump(self, reg_filename, mem_filename):
         """ Llama a los dumps de registros y memoria con los nombres pertinentes"""
         self.regs.dump(reg_filename)
-        self.memory.dump(mem_filename)
+        self.memory.dump_instr(mem_filename)   # si quieres volcar instrucciones
+        # o
+        self.memory.dump_data(mem_filename)    # si quieres volcar datos
+        # o ambos:
+        self.memory.dump_instr("instr_dump.txt")
+        self.memory.dump_data(mem_filename)
 
 
     
