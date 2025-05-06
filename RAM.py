@@ -26,7 +26,11 @@ class RAM:
         """
         if not isinstance(addr, str) or len(addr) != 32 or not set(addr).issubset({"0", "1"}):
             raise IndexError("Dirección no válida. Debe ser una cadena binaria de 32 bits.")
-        return int(addr, 2)
+        if not isinstance(value, str) or len(value) != 32 or not set(value).issubset({"0", "1"}):
+            raise ValueError("Valor no válido. Debe ser una cadena binaria de 32 bits.")
+
+        addr_int = int(addr, 2)
+        self.memory[addr_int] = value
 
     def get(self, addr: str):
         """ Devuelve el valor actual de la dirección <addr> si esta es valida (tiene 32 bits).

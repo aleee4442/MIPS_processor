@@ -24,6 +24,7 @@ class CPU:
     def unidad_control(self, opcode: str, func: str):
         print(f"Unidad de control recibida: opcode = {opcode}, func = {func}")  # Imprime opcode y func
         print(f"Ejecutando unidad_control con opcode: {opcode}, func: {func}")
+
         if opcode == "000000":  # Tipo R
             # Si el func es "000000", es un NOP (No Operación)
             if func == "000000":
@@ -54,7 +55,19 @@ class CPU:
                 "PCSrc": 0,
                 "alu_op": alu_op
             })
-        
+
+        elif opcode == "001000":  # ADDI
+            self.lineas_control.update({
+                "reg_dst": 0,
+                "alu_src": 1,
+                "mem_to_reg": 0,
+                "reg_write": 1,
+                "mem_write": 0,
+                "mem_read": 0,
+                "PCSrc": 0,
+                "alu_op": "add"
+            })
+
         elif opcode == "100011":  # LW
             self.lineas_control.update({
                 "reg_dst": 0,
@@ -86,7 +99,7 @@ class CPU:
                 "PCSrc": 1,
                 "alu_op": "sub"  # Para comprobar igualdad
             })
-        
+
         else:
             raise Exception(f"Opcode no soportado: {opcode}")
         
@@ -110,51 +123,28 @@ class CPU:
         else:
             raise Exception(f"Operación ALU no soportada: {op}")
 
-    def load_program(self, instructions: str):
-        """ Resetea toda la información propia de la ejecución anterior para 
-            preparar la ejecución del nuevo programa (por ejemplo, resetea las
-            líneas de control a None) y guarda las instrucciones del nuevo programa 
-            en las primeras direcciones de la memoria 
+    def load_program(self, instructions: list[str]):
         """
-       # 1. Fetch: obtener la instrucción desde memoria usando el PC
-        addr_bin = format(self.PC, '032b')
-        instr = self.memory.get(addr_bin)
-        
-        print(f"Instr: {instr}")  # Imprime la instrucción cargada
+        Carga una lista de instrucciones binarias en la memoria de instrucciones.
+        También reinicia el PC y cualquier estado necesario.
+        """
+        # Resetear estado anterior
+        self.PC = 0
+        self.lineas_control = {
+            "reg_dst": None,
+            "alu_op": None,
+            "alu_src": None,
+            "mem_to_reg": None,
+            "reg_write": None,
+            "mem_read": None,
+            "mem_write": None,
+            "branch": None,
+        }
 
-        # 2. Decode: extraer campos comunes (para tipo R, I, etc.)
-        opcode = instr[0:6]
-        funct = instr[26:32]  # Obtenemos 'func'
-
-        print(f"Func: {funct}")  # Imprime el valor de funct antes de llamar a unidad_control
-
-        if opcode == "000000":  # Tipo R
-            rs = instr[6:11]  # Esto será una cadena de 5 bits
-            rt = instr[11:16]  # Esto será una cadena de 5 bits
-            rd = int(instr[16:21], 2)
-            shamt = int(instr[21:26], 2)  # No lo usamos aún
-            funct = instr[26:32]
-
-            # 3. Unidad de control
-            self.unidad_control(opcode, funct)
-
-            # Si es NOP, salimos directamente
-            if opcode == "000000" and funct == "000000":
-                return
-
-            print(f"rs: {rs}, rt: {rt}")
-            # 4. Leer registros
-            value1 = self.regs.get(rs)
-            value2 = self.regs.get(rt)
-
-            # 5. ALU
-            result = self.ALU(value1, value2)
-
-            # 6. Write-back (si reg_write está activado)
-            if self.lineas_control["reg_write"]:
-                dest = rd if self.lineas_control["reg_dst"] else rt
-                self.regs.write(dest, result)
-
+        # Cargar instrucciones en memoria
+        for i, instr in enumerate(instructions):
+            address = format(i, '032b')  # Dirección binaria de 32 bits
+            self.memory.set(address, instr)  # Usar set() en lugar de write()
 
     def run_instrucion(self):
         """ Ejecuta la instrucción que indica el PC en ese momento. """
@@ -191,7 +181,7 @@ class CPU:
 
             if self.lineas_control["reg_write"]:
                 dest = rd if self.lineas_control["reg_dst"] else rt
-                self.regs.write(dest, result)
+                self.regs.set(dest, result)
 
         elif opcode in ["100011", "101011"]:  # LW o SW (tipo I)
             rs = instr[6:11]
@@ -205,7 +195,7 @@ class CPU:
             if self.lineas_control["mem_read"]:  # LW
                 value = self.memory.get(mem_addr_bin)
                 if self.lineas_control["reg_write"]:
-                    self.regs.write(int(rt, 2), value)
+                    self.regs.set(int(rt, 2), value)
 
             elif self.lineas_control["mem_write"]:  # SW
                 value = self.regs.get(rt)

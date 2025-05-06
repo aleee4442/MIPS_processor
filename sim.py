@@ -8,6 +8,9 @@ cpu = CPU()
 # Lectura de instrucciones
 with open('sample_program.txt', 'r') as program_file:
     instructions = program_file.read().splitlines() 
+    print("INSTRUCCIONES LEÍDAS DESDE sample_program.txt:")
+    for i, instr in enumerate(instructions):
+        print(f"{i}: {instr}")
 cpu.load_program(instructions)
 
 # Ejecutamos las instrucciones una a una
