@@ -148,6 +148,7 @@ class CPU:
 
     def run_instrucion(self):
         """ Ejecuta la instrucción que indica el PC en ese momento. """
+        #self.regs.initialize_regs()
         addr_bin = format(self.PC, '032b')
         instr = self.memory.get(addr_bin)
 
@@ -170,19 +171,24 @@ class CPU:
         if opcode == "000000":  # Tipo R
             rs = instr[6:11]
             rt = instr[11:16]
-            rd = int(instr[16:21], 2)
+            rd = instr[16:21]  # <-- Mantener en binario de 5 bits
 
             print(f"rs: {rs}, rt: {rt}, rd: {rd}")
+            
+            # Verificar los valores de los registros antes de la operación
+            print(f"Antes de ejecutar ALU: $t0 = {self.regs.get('01000')}, $t1 = {self.regs.get('01001')}")
 
             value1 = self.regs.get(rs)
             value2 = self.regs.get(rt)
 
             result = self.ALU(value1, value2)
 
+            print(f"Resultado ALU: {result}")
+
             if self.lineas_control["reg_write"]:
                 dest = rd if self.lineas_control["reg_dst"] else rt
-                self.regs.set(dest, result)
-
+                self.regs.set(dest, result)  # <-- Actualiza el registro de destino
+                print(f"Registro {dest} actualizado a: {self.regs.get(dest)}")
         elif opcode in ["100011", "101011"]:  # LW o SW (tipo I)
             rs = instr[6:11]
             rt = instr[11:16]
@@ -199,8 +205,8 @@ class CPU:
 
             elif self.lineas_control["mem_write"]:  # SW
                 value = self.regs.get(rt)
-                self.memory.set(mem_addr_bin, value)
-
+                self.memory.set(mem_addr_bin, value)        
+                print(f"Memoria en {mem_addr_bin} actualizada a: {value}")
         elif opcode == "000100":  # BEQ
             rs = instr[6:11]
             rt = instr[11:16]
@@ -212,10 +218,26 @@ class CPU:
 
             if result == format(0, '032b'):  # son iguales
                 self.PC += offset
-                return  # Ya hemos actualizado PC
-
+                return
         # Avanza PC si no ha saltado
-        self.PC += 1
+        elif opcode == '001000':  # ADDI
+            rs_bin = instr[6:11]
+            rt_bin = instr[11:16]
+            imm_bin = instr[16:]
+
+            rs_val = self.regs.get(rs_bin)
+            imm_val = int(imm_bin, 2)
+            rs_int = int(rs_val, 2)
+
+            result = rs_int + imm_val
+            result_bin = format(result, '032b')
+
+            self.regs.set(rt_bin, result_bin)
+
+        self.PC += 4
+        self.regs.set("00001", format(self.PC, '032b'))  # Usa el índice binario para PC        print(f"PC = {self.PC}")
+        #print(f"PC = {self.regs.get('PC')}")
+        print(f"PC = {self.PC}")
 
     def run(self):
         """ Ejecuta el programa cargado desde el punto de ejecución actual, 
@@ -240,5 +262,3 @@ class CPU:
         self.memory.dump_instr("instr_dump.txt")
         self.memory.dump_data(mem_filename)
 
-
-    

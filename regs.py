@@ -15,12 +15,13 @@ class Regs:
     def __init__(self):
         """ Inicializa algo, si hiciese falta """
         # TODO: Rellenad la funcion
-        self.PC = "0" * 32 
+        #self.PC = 0
         self.registers = {
             # TODO: añadir los registros necesarios
             # Se propone usar un diccionario pero podéis
             # cambiarlo con vuestra lógica (por ejemplo, usando
-            # una lista)
+            # una lista)e
+            "PC": 0,
             "zero": "0" * 32,
             "t0": "0" * 32,
             "t1": "0" * 32,
@@ -41,6 +42,7 @@ class Regs:
         }
         self.index_map = {
             "00000": "zero",
+            "00001": "PC",
             "01000": "t0", "01001": "t1", "01010": "t2", "01011": "t3",
             "01100": "t4", "01101": "t5", "01110": "t6", "01111": "t7",
             "10000": "s0", "10001": "s1", "10010": "s2", "10011": "s3",
@@ -48,40 +50,33 @@ class Regs:
         }
 
     def set(self, reg_idx: str, value):
-        """ Escribe el valor <value> en el registro <reg_idx>, si este es válido (es uno de los de arriba)
-            Lanza una excepción IndexError si no es válida.
-            
-            Ejemplo: reg_idx: "1000" | value: "00...0010" (32 bits) 
-                Almacenará en el registro 8 ($t0) un 2 en "binario".
-        """
-        if reg_idx not in self.index_map:
+        """Versión modificada que maneja PC correctamente"""
+        # Permite acceso directo por nombre (como "PC") o por índice binario
+        if reg_idx in self.index_map:  # Si es un índice binario
+            reg_name = self.index_map[reg_idx]
+        elif reg_idx in self.registers:  # Si es un nombre de registro directo
+            reg_name = reg_idx
+        else:
             raise IndexError(f"Registro inválido: {reg_idx}")
-        if len(value) != 32 or not set(value).issubset({"0", "1"}):
-            raise ValueError("El valor debe ser una cadena binaria de 32 bits.")
-        reg_name = self.index_map[reg_idx]
+        
         if reg_name == "zero":
             return  # zero es inmutable
-        if reg_idx == "PC":
-            if len(value) != 32 or not set(value).issubset({"0", "1"}):
-                raise ValueError("El valor debe ser una cadena binaria de 32 bits.")
-            self.PC = value
-            return
+        
+        if len(value) != 32 or not set(value).issubset({"0", "1"}):
+            raise ValueError("El valor debe ser una cadena binaria de 32 bits.")
+        
         self.registers[reg_name] = value
 
     def get(self, reg_idx: str):
         """ Devuelve el valor actual de el registro <reg_idx> si este es válido (es uno de los de arriba)
-            Lanza una excepción IndexError si no es válida 
-            
-            Ejemplo: reg_idx: "1001" --> value: "00...0011" (32 bits) 
-                Devuelve del registro 9 ($t1) un 3 en "binario".
-        """
+            Lanza una excepción IndexError si no es válida """
         if reg_idx == "00000":  # El registro zero es especial
             return "0" * 32  # El valor del registro zero siempre es 0
         if reg_idx not in self.index_map:
             raise IndexError(f"Registro inválido: {reg_idx}")
         reg_name = self.index_map[reg_idx]
+        print(f"Obteniendo valor de {reg_name}: {self.registers[reg_name]}")
         return self.registers[reg_name]
-
     def reset(self):
         """ Pone todos los registros a cero """
         self.PC = "0" * 32
@@ -100,10 +95,12 @@ class Regs:
         ...
         s7 <value>
           
+    
         Donde value es un número cualquiera """
+        
         with open(filename, "w") as f:
-            f.write(f"PC {self.PC}\n")
-            for reg in ["zero"] + [f"t{i}" for i in range(8)] + [f"s{i}" for i in range(8)]:
+           # f.write(f"PC {self.PC}\n")
+            for reg in ["PC"] + [f"t{i}" for i in range(8)] + [f"s{i}" for i in range(8)]:
                 val = self.registers[reg]
                 f.write(f"{reg} {val}\n")
-
+    

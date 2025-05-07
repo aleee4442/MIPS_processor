@@ -47,32 +47,35 @@ class RAM:
         self.memory.clear()
 
     def dump_instr(self, filename: str):
-        """ Realiza un volcado de memoria al fichero <filename> del segmento de instrucciones
-        El formato ha de ser el siguiente:
-        <addr> <value>
-        <addr> <value> 
-        ...
-        
-        Donde addr está en hexadecimal (es decir, de la forma 0x12345678) 
-        y value será una cadena de 32 bits"""
+        """ Realiza un volcado de memoria al fichero <filename> del segmento de instrucciones.
+            El formato ha de ser el siguiente:
+            <addr> <value>
+            <addr> <value> 
+            ...
+            
+            Donde addr está en hexadecimal (es decir, de la forma 0x12345678) 
+            y value será una cadena de 32 bits. """
         with open(filename, "w") as f:
             for addr in sorted(self.memory.keys()):
-                if addr < 1000:
-                    f.write(f"{hex(addr)} {self.memory[addr]}\n")
-
+                if addr < 1000:  # Solo instrucciones (en el rango de 0 a 999)
+                    # Asegúrate de que el valor esté en formato de 32 bits
+                    value = self.memory[addr].zfill(32)
+                    f.write(f"{hex(addr)} {value}\n")
 
     def dump_data(self, filename: str):
-        """ Realiza un volcado de memoria al fichero <filename> del segmento de datos
-        El formato ha de ser el siguiente:
-        <addr> <value>
-        <addr> <value> 
-        ...
-        
-        Donde addr está en hexadecimal (es decir, de la forma 0x12345678) 
-        y value puede ser un número cualquiera"""
+        """ Realiza un volcado de memoria al fichero <filename> del segmento de datos.
+            El formato ha de ser el siguiente:
+            <addr> <value>
+            <addr> <value> 
+            ...
+            
+            Donde addr está en hexadecimal (es decir, de la forma 0x12345678) 
+            y value puede ser un número cualquiera. """
         with open(filename, "w") as f:
             for addr in sorted(self.memory.keys()):
-                if addr >= 1000:
-                    f.write(f"{hex(addr)} {self.memory[addr]}\n")
+                if addr >= 1000:  # Solo datos (direcciones >= 1000)
+                    # Asegúrate de que el valor esté en formato de 32 bits
+                    value = self.memory[addr].zfill(32)
+                    f.write(f"{hex(addr)} {value}\n")
 
 
